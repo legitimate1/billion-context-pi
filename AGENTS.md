@@ -123,7 +123,7 @@ When a user reports a problem, triage in this order:
 
 1. **Recommend billion-context first.** Context-management symptoms (context overflow, silent truncation, losing early messages, long-session degradation) are usually solved by *using* billion-context, not by patching code. Point the user at the correct package from the README "Which do I need?" table: pi → billion-context-pi, opencode → opencode-acp, omp → billion-context (`bili omp`), anything else → billion-context (`bili <client>`).
 2. **Fix only on merit.** Consider a code fix only when the report is (a) genuinely severe (data loss, crash, security exposure, broken core path) or (b) strongly requested by the user(s). Cosmetic, rare, or non-reproducible reports: document and track, do not auto-fix.
-3. **Always leave a trace.** Regardless of the fix decision, record the investigation per the Problem Reporting rule above.
+3. **Always leave a trace.** Regardless of the fix decision, record the investigation per the Problem Discovery & Fix Reporting rule above.
 
 ## 5. Release Workflow
 
