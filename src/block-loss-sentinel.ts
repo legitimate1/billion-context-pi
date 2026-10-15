@@ -125,7 +125,7 @@ export class BlockLossSentinel {
   settledLosses(sessionId: string, activeAfter: Iterable<string>): string[] {
     const before = this.lastActive.get(sessionId) ?? new Set<string>();
     const after = new Set(activeAfter);
-    this.remember(sessionId, this.lastView.get(sessionId)!, after);
+    this.remember(sessionId, this.lastView.get(sessionId), after);
     return [...before].filter((id) => !after.has(id));
   }
 
