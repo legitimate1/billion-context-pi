@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createAcpExtension } from "../src/index.js";
-import { PI_DESKTOP_WARNING_MESSAGE, UNSUPPORTED_HOST_MESSAGE } from "../src/omp.js";
+import { FORK_HOST_WARNING_MESSAGE, PI_DESKTOP_WARNING_MESSAGE, UNSUPPORTED_HOST_MESSAGE } from "../src/omp.js";
 import { setRunNpmForTest } from "../src/update.js";
 
 // Hermetic session_start: the pi (non-OMP) path runs the auto-update check, so
@@ -176,6 +176,7 @@ describe("Unsupported-host refusal (issue #234 / #364)", () => {
 
     assert.equal(notes.filter((m) => m === UNSUPPORTED_HOST_MESSAGE).length, 0, "no refusal when fork declared");
     assert.deepEqual(handlers.get("session_before_compact")![0]!({}, {}), { cancel: true });
+    assert.equal(notes.filter((m) => m === FORK_HOST_WARNING_MESSAGE).length, 1, "generic fork warning shown once (#635)");
   });
 
   test("PI-Desktop declaration (PI_ACP_FORK_HOST=pi-desktop) is admitted with its own warning (#635)", async () => {
