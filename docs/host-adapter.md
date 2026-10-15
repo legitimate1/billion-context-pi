@@ -199,9 +199,9 @@ Consequences for hosts:
   turn N+1 onward; the live merge compensates for exactly this lag. This merge fires for
   *any* non-Pi-shaped session manager (`!isPiHost`), which is what makes declared forks work.
 - Delegation (`acp_delegate`) spawns real pi CLI processes. On non-Pi hosts the delegate
-  tool refuses to spawn with pi-only flags, regardless of the declaration. Hosts that run
-   sub-agents natively (e.g. Prime RLM) should set `"delegate": false` in acp.json so the
-   model is not offered a tool whose children cannot run.
+   tool refuses to spawn with pi-only flags, regardless of the declaration. Hosts that run
+  sub-agents natively (e.g. Prime RLM) should set `"delegate": false` in acp.json so the
+  model is not offered a tool whose children cannot run.
 - **PI-Desktop (#635)** rewrites its in-flight view between turns, so compressed blocks can
   be dropped after several turns even though single-turn compress works. It is admitted via
   `PI_ACP_FORK_HOST=pi-desktop` under its own warning, which points long sessions at the proxy.
