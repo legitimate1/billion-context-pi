@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { entriesToCoreMessages, coreOutToAgentMessages, isCustomMessageEntry, matchesStoredText, messageIdentity, ACP_STATUS_CUSTOM_TYPE, ACP_EXPORT_CUSTOM_TYPE, ACP_RULE_CUSTOM_TYPE } from "../src/messages.js";
+import { entriesToCoreMessages, coreOutToAgentMessages, isCustomMessageEntry, matchesStoredText, messageIdentity, projectContextEntries, ACP_STATUS_CUSTOM_TYPE, ACP_EXPORT_CUSTOM_TYPE, ACP_RULE_CUSTOM_TYPE } from "../src/messages.js";
 import { isTurnBoundary } from "../src/turn-boundary.js";
 import type { CoreMessage } from "acp-kernel";
 import type { SessionEntry, SessionMessageEntry } from "@earendil-works/pi-coding-agent";
@@ -136,6 +136,41 @@ function customEntry(id: string, customType: string, content: string | unknown[]
     content,
   } as SessionEntry;
 }
+
+function contextEdit(id: string, targetId: string, content: string | null): SessionEntry {
+  return {
+    type: "context_edit",
+    id,
+    parentId: null,
+    timestamp: new Date().toISOString(),
+    targetId,
+    replacement: content === null ? null : { content },
+  } as SessionEntry;
+}
+
+test("entriesToCoreMessages applies the latest context_edit to custom messages", () => {
+  const entries: SessionEntry[] = [
+    customEntry("assistant", "pidian-interrupted-assistant", "#"),
+    contextEdit("edit-1", "assistant", "partial response"),
+    contextEdit("edit-2", "assistant", "complete partial response"),
+  ];
+
+  const core = entriesToCoreMessages(entries);
+
+  assert.deepEqual(core.map((message) => message.id), ["assistant"]);
+  assert.equal(core[0]!.text, "complete partial response");
+  assert.equal(projectContextEntries(entries)[0]!.type, "custom_message");
+  assert.equal((projectContextEntries(entries)[0] as Extract<SessionEntry, { type: "custom_message" }>).content, "complete partial response");
+});
+
+test("entriesToCoreMessages omits a context-edited entry when replacement is null", () => {
+  const entries: SessionEntry[] = [
+    customEntry("assistant", "pidian-interrupted-assistant", "partial response"),
+    contextEdit("edit-1", "assistant", null),
+  ];
+
+  assert.deepEqual(entriesToCoreMessages(entries), []);
+});
 
 test("entriesToCoreMessages projects custom_message as user message (string content)", () => {
   const entries: SessionEntry[] = [

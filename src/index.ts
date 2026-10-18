@@ -2,6 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
   ExtensionFactory,
+  SessionEntry,
   SessionMessageEntry,
 } from "@earendil-works/pi-coding-agent";
 import { acpJsonFiles } from "./config-dir.js";
@@ -22,7 +23,7 @@ import { makeDelegateTool, makeDelegateWaitTool, makeDelegateCancelTool, running
 import { makeCommands } from "./commands.js";
 import { mergeSurface, readToolSurfaceWithPacks, resolveActivePack, resolvePackName, surfaceMetaOf } from "./prompt-pack.js";
 import type { NudgeSectionsConfig } from "./surface.js";
-import { coreOutToAgentMessages, extractText, ACP_NUDGE_CUSTOM_TYPE, type AcpNudgeRecord } from "./messages.js";
+import { coreOutToAgentMessages, extractText, projectContextEntries, ACP_NUDGE_CUSTOM_TYPE, type AcpNudgeRecord } from "./messages.js";
 import { liveOnlyTailCached, dropLiveOnlyTailCache } from "./live-only-tail.js";
 import { carryHostSystemMessages } from "./system-passthrough.js";
 import { sanitizeToolPairing } from "./tool-pair-sanitizer.js";
@@ -1128,9 +1129,9 @@ function wireThrottleRetry(pi: ExtensionAPI, runtime: AcpRuntime): void {
   });
 }
 
-function collectOriginals(entries: Array<{ type: string; id: string; message?: AgentMessage; content?: unknown }>): Map<string, AgentMessage> {
+function collectOriginals(entries: SessionEntry[]): Map<string, AgentMessage> {
   const map = new Map<string, AgentMessage>();
-  for (const entry of entries) {
+  for (const entry of projectContextEntries(entries)) {
     if (entry.type === "message" && entry.message) {
       map.set(entry.id, entry.message);
     } else if (entry.type === "custom_message") {

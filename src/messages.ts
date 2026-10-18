@@ -47,6 +47,48 @@ export interface AcpNudgeRecord {
  *  src/turn-boundary.ts so both views can never drift apart. */
 const CONTEXT_EXCLUDED_CUSTOM_TYPES = new Set<string>([ACP_STATUS_CUSTOM_TYPE, ACP_EXPORT_CUSTOM_TYPE, ACP_RULE_CUSTOM_TYPE]);
 
+type ContextEditReplacement = Extract<SessionEntry, { type: "context_edit" }>["replacement"];
+
+function contextEditsOf(entries: readonly SessionEntry[]): Map<string, ContextEditReplacement> {
+  const edits = new Map<string, ContextEditReplacement>();
+  for (const entry of entries) {
+    if (entry.type === "context_edit") edits.set(entry.targetId, entry.replacement);
+  }
+  return edits;
+}
+
+function applyContextEdit(entry: SessionEntry, replacement: ContextEditReplacement): SessionEntry | null {
+  if (replacement === null) return null;
+  if (entry.type === "message") {
+    const content =
+      (entry.message.role === "assistant" || entry.message.role === "toolResult") &&
+      typeof replacement.content === "string"
+        ? [{ type: "text" as const, text: replacement.content }]
+        : replacement.content;
+    return { ...entry, message: { ...entry.message, content } as SessionMessageEntry["message"] };
+  }
+  if (entry.type === "custom_message") {
+    return { ...entry, content: replacement.content as typeof entry.content };
+  }
+  return entry;
+}
+
+export function projectContextEntries(entries: SessionEntry[]): SessionEntry[] {
+  const edits = contextEditsOf(entries);
+  if (edits.size === 0) return entries.filter((entry) => entry.type !== "context_edit");
+  const projected: SessionEntry[] = [];
+  for (const entry of entries) {
+    if (entry.type === "context_edit") continue;
+    if (!edits.has(entry.id)) {
+      projected.push(entry);
+      continue;
+    }
+    const edited = applyContextEdit(entry, edits.get(entry.id)!);
+    if (edited) projected.push(edited);
+  }
+  return projected;
+}
+
 /** True for host-injected custom_message entries that participate in LLM
  *  context: non-empty custom_message except the UI-only types in
  *  CONTEXT_EXCLUDED_CUSTOM_TYPES (acp-status panels, acp-export docs,
@@ -66,7 +108,7 @@ export function isCustomMessageEntry(entry: TurnBoundaryEntry): entry is TurnBou
 
 export function entriesToCoreMessages(entries: SessionEntry[]): CoreMessage[] {
   const out: CoreMessage[] = [];
-  for (const entry of entries) {
+  for (const entry of projectContextEntries(entries)) {
     if (entry.type !== "message") {
       // custom_message participates in LLM context per Pi native semantics
       // (session-manager.d.ts) — project it as a user message.
@@ -107,6 +149,8 @@ export class EntryProjectionCache {
   private count = 0;
   private firstId: string | null = null;
   private lastId: string | null = null;
+  private contextEditCount = 0;
+  private contextEditLastId: string | null = null;
   private cores: CoreMessage[] = [];
 
   /** Project `entries`, reusing the previous turn's work when the array is a
@@ -114,6 +158,9 @@ export class EntryProjectionCache {
    *  internal array is shared across turns, and callers hand it to kernel code
    * that must never observe (or mutate) cross-turn state. */
   project(entries: SessionEntry[]): CoreMessage[] {
+    const contextEditEntries = entries.filter((entry) => entry.type === "context_edit");
+    const contextEditCount = contextEditEntries.length;
+    const contextEditLastId = contextEditEntries.at(-1)?.id ?? null;
     if (
       this.count > 0 &&
       entries.length >= this.count &&
@@ -121,25 +168,21 @@ export class EntryProjectionCache {
       this.firstId !== null &&
       this.lastId !== null &&
       entries[0]?.id === this.firstId &&
-      entries[this.count - 1]?.id === this.lastId
+      entries[this.count - 1]?.id === this.lastId &&
+      contextEditCount === this.contextEditCount &&
+      contextEditLastId === this.contextEditLastId
     ) {
-      for (let i = this.count; i < entries.length; i++) {
-        const entry = entries[i]!;
-        if (entry.type === "message") {
-          this.cores.push(...projectMessage(entry.message, entry.id));
-        } else if (isCustomMessageEntry(entry)) {
-          const text = extractText(entry.content);
-          if (text.length > 0) this.cores.push({ id: entry.id, role: "user", contentType: "text", text });
-        }
-      }
+      this.cores.push(...entriesToCoreMessages(entries.slice(this.count)));
       this.count = entries.length;
-      this.lastId = entries[entries.length - 1]!.id;
+      this.lastId = entries[entries.length - 1]?.id ?? null;
       return this.cores.slice();
     }
     this.cores = entriesToCoreMessages(entries);
     this.count = entries.length;
     this.firstId = entries[0]?.id ?? null;
     this.lastId = entries[entries.length - 1]?.id ?? null;
+    this.contextEditCount = contextEditCount;
+    this.contextEditLastId = contextEditLastId;
     return this.cores.slice();
   }
 
@@ -148,6 +191,8 @@ export class EntryProjectionCache {
     this.count = 0;
     this.firstId = null;
     this.lastId = null;
+    this.contextEditCount = 0;
+    this.contextEditLastId = null;
     this.cores = [];
   }
 }

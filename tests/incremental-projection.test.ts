@@ -119,3 +119,29 @@ test("reset() drops the cache", () => {
   const grown = [...entries, ...buildHistory(1)];
   assert.deepEqual(cache.project(grown), entriesToCoreMessages(grown));
 });
+
+test("context_edit invalidates the incremental prefix and projects the replacement", () => {
+  const cache = new EntryProjectionCache();
+  const first = customEntry("assistant", "pidian-interrupted-assistant", "#");
+  const initial = [first, {
+    type: "context_edit",
+    id: "edit-1",
+    parentId: null,
+    timestamp: new Date().toISOString(),
+    targetId: "assistant",
+    replacement: { content: "partial response" },
+  } as SessionEntry];
+  assert.deepEqual(cache.project(initial), entriesToCoreMessages(initial));
+  assert.equal(cache.project(initial)[0]!.text, "partial response");
+
+  const grown = [...initial, {
+    type: "context_edit",
+    id: "edit-2",
+    parentId: null,
+    timestamp: new Date().toISOString(),
+    targetId: "assistant",
+    replacement: { content: "complete partial response" },
+  } as SessionEntry];
+  assert.deepEqual(cache.project(grown), entriesToCoreMessages(grown));
+  assert.equal(cache.project(grown)[0]!.text, "complete partial response");
+});

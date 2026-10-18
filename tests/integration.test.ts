@@ -115,6 +115,62 @@ test("context handler tags every message with a ref even when length matches eve
   assert.ok(firstContent.some((b: any) => b.type === "text" && b.text.includes("m0000")), "first msg ref-tagged");
 });
 
+test("context handler preserves context_edit replacements when rebuilding SDK history", async () => {
+  const { api, handlers } = captureApi();
+  createAcpExtension({ modelContextLimit: 200_000 })(api as any);
+
+  const entries = [
+    userMsg("u1", "输出一篇文章"),
+    {
+      type: "custom_message",
+      id: "assistant-1",
+      parentId: "u1",
+      timestamp: "",
+      customType: "pidian-interrupted-assistant",
+      content: "#",
+      display: false,
+    },
+    {
+      type: "context_edit",
+      id: "edit-1",
+      parentId: "assistant-1",
+      timestamp: "",
+      targetId: "assistant-1",
+      replacement: { content: "# 在不确定的世界里，慢慢建立自己的秩序\n\n正文已经输出到这里" },
+    },
+  ];
+  const stateFile = tmpPath("nonexistent-pai-context-edit.session.json");
+  const baseCtx = fakeCtx(entries, stateFile);
+  const ctx = {
+    ...baseCtx,
+    sessionManager: {
+      ...baseCtx.sessionManager,
+      buildContextEntries: () => entries,
+    },
+  };
+
+  const contextMessages = entries.slice(0, 2).map((entry) => {
+    const record = entry as { message?: unknown; content?: unknown };
+    return record.message ?? { role: "user", content: record.content, timestamp: 0 };
+  });
+  const result = await handlers.get("context")![0]!(
+    { type: "context", messages: contextMessages },
+    ctx,
+  );
+  const text = (result.messages as unknown[]).map((message) => {
+    if (!message || typeof message !== "object") return "";
+    const content = (message as { content?: unknown }).content;
+    const blocks = Array.isArray(content) ? content : [{ type: "text", text: content }];
+    return blocks
+      .filter((block): block is { type?: unknown; text?: unknown } => !!block && typeof block === "object")
+      .filter((block) => block.type === "text" && typeof block.text === "string")
+      .map((block) => block.text)
+      .join("\n");
+  }).join("\n");
+
+  assert.ok(text.includes("正文已经输出到这里"), "the latest context_edit replacement reaches the outgoing context");
+});
+
 test("context handler works under omp (oh-my-pi) where sessionManager exposes getBranch() not buildContextEntries()", async () => {
   const { api, handlers } = captureApi();
   createAcpExtension({ modelContextLimit: 200_000 })(api as any);
