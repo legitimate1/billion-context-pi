@@ -28,8 +28,8 @@ QQ群:
 
 <p align="center">
 <a href="https://www.npmjs.com/package/billion-context-pi"><img src="https://img.shields.io/npm/v/billion-context-pi.svg?style=flat-square" alt="npm"></a>
-<a href="https://github.com/ranxianglei/billion-context-pi/blob/master/LICENSE"><img src="https://img.shields.io/npm/l/billion-context-pi.svg?style=flat-square" alt="license"></a>
-<a href="https://github.com/ranxianglei/billion-context-pi"><img src="https://img.shields.io/badge/GitHub-ranxianglei%2Fbillion--context--pi-181717?style=flat-square&logo=github" alt="GitHub"></a>
+<a href="https://github.com/legitimate1/billion-context-pi/blob/master/LICENSE"><img src="https://img.shields.io/npm/l/billion-context-pi.svg?style=flat-square" alt="license"></a>
+<a href="https://github.com/legitimate1/billion-context-pi"><img src="https://img.shields.io/badge/GitHub-legitimate1%2Fbillion--context--pi-181717?style=flat-square&logo=github" alt="GitHub"></a>
 </p>
 
 <p align="center">
@@ -62,7 +62,7 @@ QQ群:
 
 | 客户端 | 用这个 |
 |---|---|
-| **pi** | [`billion-context-pi`](https://github.com/ranxianglei/billion-context-pi)(进程内扩展) |
+| **pi** | [`billion-context-pi`](https://github.com/legitimate1/billion-context-pi)(进程内扩展) |
 | **opencode** | [`opencode-acp`](https://github.com/ranxianglei/opencode-acp)(进程内扩展) |
 | **omp** | [`billion-context`](https://github.com/ranxianglei/billion-context),`bili omp`(内置插件) |
 | **其余所有** | [`billion-context`](https://github.com/ranxianglei/billion-context) —— `bili <client>`(启动器,优先)或 `/bili/` 前缀 |

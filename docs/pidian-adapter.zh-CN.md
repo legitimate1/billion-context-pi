@@ -94,22 +94,13 @@ sidecar 是扩展派生状态，不替代原生 session log，也不能让扩展
 
 ## 开发目录与用户级扩展目录
 
-当前开发部署是过渡状态：
+迁移已经完成。Git 工作树和 Pi/Pidian loader 路径现在是同一个目录：
 
 ```text
-C:/Users/m/Project/pidian-context-extension       ← Git 工作树
-        ↑
-        │ junction
-C:/Users/m/.pi/agent/extensions/billion-context-pi ← Pi/Pidian loader 路径
+C:/Users/m/.pi/agent/extensions/billion-context-pi ← Git / Pi / Pidian 目录
 ```
 
-已确定的简化目标是让 Git 工作树本身位于：
-
-```text
-C:/Users/m/.pi/agent/extensions/billion-context-pi
-```
-
-junction 不是 Pi 或本适配层的必要条件。只有运行路径和开发工作树必须分离时，junction 才有价值。在迁移完成并验证前，不要把删除现有 junction 混入无关修改。
+junction 不是 Pi 或本适配层的必要条件。只有运行路径和开发工作树必须分离时，junction 才有价值。本次迁移已经移除了旧的 `C:/Users/m/Project/pidian-context-extension` 工作树和 junction。
 
 ## 上游同步
 

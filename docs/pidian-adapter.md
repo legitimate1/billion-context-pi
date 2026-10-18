@@ -94,22 +94,13 @@ This boundary is important when diagnosing partial streamed messages: first dete
 
 ## Development directory and user-level extension directory
 
-The current development deployment is transitional:
+The migration is complete. The Git worktree and the Pi/Pidian loader path are now the same directory:
 
 ```text
-C:/Users/m/Project/pidian-context-extension       ← Git worktree
-        ↑
-        │ junction
-C:/Users/m/.pi/agent/extensions/billion-context-pi ← Pi/Pidian loader path
+C:/Users/m/.pi/agent/extensions/billion-context-pi ← Git / Pi / Pidian directory
 ```
 
-The intended simpler layout is to make the Git worktree itself:
-
-```text
-C:/Users/m/.pi/agent/extensions/billion-context-pi
-```
-
-A junction is not required by Pi or by this adapter. It is useful only when the runtime path and development worktree must be separate. Until the migration is performed and verified, do not remove the existing junction as part of an unrelated change.
+A junction is not required by Pi or by this adapter. It is useful only when the runtime path and development worktree must be separate. The old `C:/Users/m/Project/pidian-context-extension` worktree and junction were removed as part of this migration.
 
 ## Upstream synchronization
 

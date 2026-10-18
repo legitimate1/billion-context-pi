@@ -27,13 +27,13 @@
 		"LICENSE"
 	],
 	"sideEffects": false,
-	"homepage": "https://github.com/ranxianglei/billion-context-pi",
+	"homepage": "https://github.com/legitimate1/billion-context-pi",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/ranxianglei/billion-context-pi.git"
+		"url": "git+https://github.com/legitimate1/billion-context-pi.git"
 	},
 	"bugs": {
-		"url": "https://github.com/ranxianglei/billion-context-pi/issues"
+		"url": "https://github.com/legitimate1/billion-context-pi/issues"
 	},
 	"publishConfig": {
 		"access": "public"

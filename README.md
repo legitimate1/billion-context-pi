@@ -30,8 +30,8 @@ A production-scale longitudinal study: 4.5 months, three hosts, 174,327 model ca
 
 <p align="center">
 <a href="https://www.npmjs.com/package/billion-context-pi"><img src="https://img.shields.io/npm/v/billion-context-pi.svg?style=flat-square" alt="npm"></a>
-<a href="https://github.com/ranxianglei/billion-context-pi/blob/master/LICENSE"><img src="https://img.shields.io/npm/l/billion-context-pi.svg?style=flat-square" alt="license"></a>
-<a href="https://github.com/ranxianglei/billion-context-pi"><img src="https://img.shields.io/badge/GitHub-ranxianglei%2Fbillion--context--pi-181717?style=flat-square&logo=github" alt="GitHub"></a>
+<a href="https://github.com/legitimate1/billion-context-pi/blob/master/LICENSE"><img src="https://img.shields.io/npm/l/billion-context-pi.svg?style=flat-square" alt="license"></a>
+<a href="https://github.com/legitimate1/billion-context-pi"><img src="https://img.shields.io/badge/GitHub-legitimate1%2Fbillion--context--pi-181717?style=flat-square&logo=github" alt="GitHub"></a>
 </p>
 
 <p align="center">
@@ -63,7 +63,7 @@ Pick by your client:
 
 | Client | Use |
 |---|---|
-| **pi** | [`billion-context-pi`](https://github.com/ranxianglei/billion-context-pi) (in-process extension) |
+| **pi** | [`billion-context-pi`](https://github.com/legitimate1/billion-context-pi) (in-process extension) |
 | **opencode** | [`opencode-acp`](https://github.com/ranxianglei/opencode-acp) (in-process extension) |
 | **omp** | [`billion-context`](https://github.com/ranxianglei/billion-context) via `bili omp` (built-in plugin) |
 | **everything else** | [`billion-context`](https://github.com/ranxianglei/billion-context) — `bili <client>` (launcher, preferred) or `/bili/` prefix |
