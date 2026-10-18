@@ -84,6 +84,10 @@ That's it. The extension auto-loads on next Pi startup. No configuration needed 
 >
 > If you keep `pi-subagents` installed, billion-context-pi detects it at session start: a **project-level** install (`<cwd>/.pi/npm` or the project extensions dir) automatically stands `acp_delegate` down for that project — a reminder then tells you how to give pi-subagents' agents ACP compression via `/acp-subagents`. A **user-level-only** install (`~/.pi/npm`, user extensions dir) leaves `acp_delegate` active and logs a warning instead. Set `"delegate": { "forceEnable": true }` in `acp.json` to keep `acp_delegate` active regardless of detection.
 
+## Pidian SDK Host adapter
+
+This repository also contains the Pidian-specific entry and SDK compatibility layer used by a fixed, headless Pi SDK Host. It remains a `billion-context-pi` extension: Pidian provides the generic host, while this package owns compression and its derived ACP state. See [docs/pidian-adapter.md](./docs/pidian-adapter.md) for the ownership boundary, interrupted-stream semantics, development layout, and upstream-sync rules.
+
 ## How it works
 
 billion-context intercepts Pi's `context` event (fired before each LLM call) and runs an 8-stage pipeline:

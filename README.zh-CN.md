@@ -83,6 +83,10 @@ pi install npm:billion-context-pi
 >
 > 若保留已安装的 `pi-subagents`,billion-context-pi 会在会话启动时检测:**项目级**安装(`<cwd>/.pi/npm` 或项目内 extensions 目录)会自动停用该项目的 `acp_delegate`,并提醒你运行 `/acp-subagents` 让 pi-subagents 的子代理获得 ACP 压缩;仅**用户级**(全局)安装时只记一条警告日志,`acp_delegate` 保持启用。在 `acp.json` 中设置 `"delegate": { "forceEnable": true }` 可在检测到第三方子代理时仍强制保留 `acp_delegate`。
 
+## Pidian SDK Host 适配层
+
+本仓库还包含供固定 headless Pi SDK Host 使用的 Pidian 专用入口和 SDK 兼容层。它仍然是 `billion-context-pi` 扩展：Pidian 提供通用宿主，本包拥有压缩能力和派生 ACP 状态。所有权边界、中断流语义、开发目录和上游同步规则见 [docs/pidian-adapter.zh-CN.md](./docs/pidian-adapter.zh-CN.md)。
+
 ## 工作原理
 
 billion-context 拦截 Pi 的 `context` 事件(每次 LLM 调用前触发),运行一个 8 阶段管线:
