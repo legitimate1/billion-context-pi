@@ -59,6 +59,34 @@ This keeps compression and context management active while leaving self-update, 
 
 The extension must use the Pi SDK public API. It must not import Pidian private modules, IPC code, Obsidian views/tabs, or write the native session JSONL itself.
 
+## Feature observation bridge
+
+Pidian exposes a versioned structural provider bridge (provider API version
+`1`). A host may inject the method
+`registerPidianFeatureObservationProvider` into its public `ExtensionAPI`
+object. Because Pi creates a separate `ExtensionAPI` object for each loaded
+extension, the Pidian adapter also uses the public shared event bus channel
+`pidian.feature-observation-provider` when the method is not present. The
+bridge is optional: normal Pi hosts provide neither surface, and the extension
+must remain fully functional when both are absent. The extension never imports
+a Pidian module; it registers a provider using the same Pi public session APIs
+it already uses for compression.
+
+The `billion-context-pi` provider publishes `context-usage /
+task-effective-tokens` for the current active branch. It projects the branch
+through `entriesToCoreMessages`, counts each canonical projected message once,
+excludes `compress` tool calls/results and compression summaries, and reports
+the branch session/leaf identity. The value is a task-effective information
+measure, not provider billing and not `tokens.total`.
+
+The provider returns bounded JSON-safe facts only: token count, projected
+message count, scope, status, and checkpoint metadata. It does not return
+message text, ACP summaries, sidecar contents, or extension/runtime objects.
+Pidian records the host-received, forwarded, projected, and UI-bound
+checkpoints. If the bridge or provider is absent, Pidian explicitly uses the
+native current-context value as a no-compression fallback; a provider error is
+reported as unavailable/error rather than silently treated as a valid value.
+
 The sidecar is derived extension state. It does not replace the native session log and it does not give the extension a way to persist native JSONL after the SDK Host process has died.
 
 ## Pidian compatibility surface

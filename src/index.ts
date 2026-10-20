@@ -55,6 +55,7 @@ import { FORK_HOST_WARNING_MESSAGE, UNSUPPORTED_HOST_MESSAGE } from "./omp.js";
 import { isDeclaredForkHost, isUnsupportedHost } from "./host.js";
 import { isBiliProxyBaseUrl, PROXY_STAND_DOWN_MESSAGE, nativeStandDownMessage } from "./proxy-detect.js";
 import { findPiSubagentsInstalls, resolveAgentDir, DELEGATE_STAND_DOWN_MESSAGE } from "./setup-subagent-tools.js";
+import { registerPidianFeatureObservationProvider } from "./pidian-observation.js";
 
 // Host-facing API for multi-session hosts (docs/host-adapter.md, #367): the
 // extension keeps its own runtime instance private; hosts build their own via
@@ -79,6 +80,7 @@ export function createAcpExtension(adapter: AdapterConfig = {}): ExtensionFactor
       return;
     }
     const runtime = createRuntime(adapter);
+    registerPidianFeatureObservationProvider(pi, runtime);
     // Double-compression guards (#296, #461): exactly one side may own
     // compression. Three signals, ALL checked lazily on every event because
     // none can be trusted at factory time:
