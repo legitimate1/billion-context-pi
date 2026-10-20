@@ -16,6 +16,7 @@ import { countUnicodeEscapes, findUnverifiableUserQuote, sanitizeSummary } from 
 import { assertNotAborted } from "./abort.js";
 import { getSystemPromptText } from "./compat.js";
 import { UNSUPPORTED_HOST_MESSAGE } from "./omp.js";
+import type { PidianSessionCompressionProvider } from "./pidian-compression.js";
 
 function formatK(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
@@ -43,9 +44,34 @@ const CompressParams = Type.Object({
   summaryMaxChars: Type.Optional(Type.Number({ description: "Override max summary length (default max: 20000 chars). Use when content is important and needs more detail — don't lose critical info just to fit the limit." })),
 });
 
-type CompressArgs = Static<typeof CompressParams>;
+export type CompressArgs = Static<typeof CompressParams>;
 
-export function makeCompressTool(runtime: AcpRuntime, overrides?: ToolPromptOverrides): ToolDefinition<typeof CompressParams> {
+export type CompressionExecutionPhase =
+  | "prepare"
+  | "load-state"
+  | "process-turn"
+  | "apply-compression"
+  | "persist"
+  | "finalize";
+
+export interface CompressionExecutionReport {
+  blocksCreated?: number;
+  tokensCompressed?: number;
+  warnings?: number;
+  errors?: ReadonlyArray<string>;
+  noop?: boolean;
+}
+
+export interface CompressionExecutionObserver {
+  phase(phase: CompressionExecutionPhase): void;
+  result(report: CompressionExecutionReport): void;
+}
+
+export function makeCompressTool(
+  runtime: AcpRuntime,
+  overrides?: ToolPromptOverrides,
+  compressionProvider?: PidianSessionCompressionProvider,
+): ToolDefinition<typeof CompressParams> {
   return applyToolPromptOverrides({
     name: "compress",
     label: "Compress",
@@ -63,7 +89,20 @@ export function makeCompressTool(runtime: AcpRuntime, overrides?: ToolPromptOver
       if (runtime.refused) return { details: undefined, content: [{ type: "text", text: runtime.refusalMessage ?? UNSUPPORTED_HOST_MESSAGE }] };
       let result: string;
       try {
-        result = await handleCompress(params as CompressArgs, runtime, ctx, toolCallId, signal);
+        if (compressionProvider) {
+          const execution = await compressionProvider.run({
+            args: params as CompressArgs,
+            context: ctx,
+            toolCallId,
+            signal,
+          });
+          if (!execution || typeof execution.text !== "string") {
+            throw new Error("Pidian session compression provider returned an invalid result");
+          }
+          result = execution.text;
+        } else {
+          result = await handleCompress(params as CompressArgs, runtime, ctx, toolCallId, signal);
+        }
       } catch (e) {
         logThrow("compress", e, { sid: ctx.sessionManager.getSessionId(), ranges: typeof (params as CompressArgs).content === "string" ? "string" : ((params as CompressArgs).content?.length ?? 0) });
         throw e;
@@ -452,7 +491,15 @@ export function tierReadyHint(state: CompressionState, config: ReturnType<AcpRun
   return "";
 }
 
-async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: ExtensionContext, toolCallId?: string, signal?: AbortSignal): Promise<string> {
+export async function handleCompress(
+  args: CompressArgs,
+  runtime: AcpRuntime,
+  ctx: ExtensionContext,
+  toolCallId?: string,
+  signal?: AbortSignal,
+  observer?: CompressionExecutionObserver,
+): Promise<string> {
+  observer?.phase("prepare");
   assertNotAborted(signal);
   const maybeRanges = normalizeRanges(args);
   // Argument errors throw (not return): pi-agent-core only sets isError:true
@@ -461,7 +508,11 @@ async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: Exte
   // counts toward the cap nor lifts it.
   if (typeof maybeRanges === "string") throw new Error(maybeRanges);
   const ranges = maybeRanges;
-  if (ranges.length === 0) return "No ranges provided.";
+  if (ranges.length === 0) {
+    observer?.result({ noop: true });
+    return "No ranges provided.";
+  }
+  observer?.phase("load-state");
   const { state: initialState, coreMessages, entries } = await runtime.stateFor(ctx);
   assertNotAborted(signal);
   const config = runtime.configFor(ctx);
@@ -476,6 +527,7 @@ async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: Exte
   // present, the raw-view count can sit far above the sent view and mis-scale
   // this pass's emergency-truncate band before boundary resolution.
   const firstTokenCount = adjustedTokenCount(runtime.core, coreMessages, initialState, config, sentTokens, imageTokens, systemPromptTokens);
+  observer?.phase("process-turn");
   const turn = runtime.core.processTurn({
     messages: coreMessages,
     state: initialState,
@@ -507,6 +559,7 @@ async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: Exte
   const snapshot = compressibleSnapshotText(turn.nudge);
   if (runtime.compressRetryCappedFor(sid, turnKey)) {
     logWarn("compress", { sid, event: "capped-reject", turnKey });
+    observer?.result({ noop: true });
     return cappedRejectionText(snapshot);
   }
   const visibleIds = new Set(messages.map((m) => m.id));
@@ -536,6 +589,7 @@ async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: Exte
   // (slice(-blocksCreated)) mislabels a non-tail refolded block (e.g. refold
   // of b1 in [b1,b2,b3] would present b3's stale summary as the new one).
   const beforeRunIds = new Map(state.blocks.map((b) => [b.blockId, b.runId]));
+  observer?.phase("apply-compression");
   const applied = runtime.core.applyCompression({
     ranges: sanitizedRanges.map((r) => ({ startRef: r.startId, endRef: r.endId, summary: r.summary, topic: r.topic ?? topLevelTopic, summaryMaxChars, compressCallId: toolCallId })),
     messages,
@@ -548,6 +602,7 @@ async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: Exte
     ? tier3OnlyRewrite(changedBlocks, applied.state.blocks)
     : null;
   if (rewriteSpans) {
+    observer?.phase("persist");
     await runtime.save(state, ctx);
     logWarn("compress", {
       sid: ctx.sessionManager.getSessionId(),
@@ -561,14 +616,22 @@ async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: Exte
         `Use search_context or decompress to retrieve details, or pick a range containing uncompressed messages (acp_status lists compressible ranges).`,
     );
   }
-  await runtime.save(applied.state, ctx);
   const { blocksCreated, tokensCompressed, errors, warnings } = applied.result;
+  observer?.phase("persist");
+  await runtime.save(applied.state, ctx);
   if (blocksCreated > 0) {
     runtime.clearDeadCompress(sid);
   } else if (allDead) {
     const count = runtime.noteDeadCompress(sid, ranges.map((r) => `${r.startId}..${r.endId}`).join("|"));
     if (count >= DEAD_REPEAT_REJECT) {
       logWarn("compress", { sid, event: "dead-range-reject", count, spans: deadSpans });
+      observer?.result({
+        blocksCreated,
+        tokensCompressed,
+        warnings: warnings.length,
+        errors,
+        noop: true,
+      });
       return deadRepeatRejectionText(deadSpans, count, snapshot);
     }
   }
@@ -581,6 +644,7 @@ async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: Exte
   // mis-scale this pass's emergency-truncate band (threshold 0.95) and skew
   // afterTokens (issue #289).
   const postSentTokens = adjustedTokenCount(runtime.core, coreMessages, applied.state, config, estimateTokens(coreMessages, collectCoveredMessageIds(applied.state), imageTokens) + systemPromptTokens, imageTokens, systemPromptTokens);
+  observer?.phase("finalize");
   const afterTurn = runtime.core.processTurn({
     messages: coreMessages,
     state: applied.state,
@@ -662,5 +726,12 @@ async function handleCompress(args: CompressArgs, runtime: AcpRuntime, ctx: Exte
       lines.push("Current compressible ranges (use these refs exactly as listed):\n" + afterSnapshot);
     }
   }
+  observer?.result({
+    blocksCreated,
+    tokensCompressed,
+    warnings: warnings.length,
+    errors,
+    noop: blocksCreated === 0,
+  });
   return lines.join("\n");
 }

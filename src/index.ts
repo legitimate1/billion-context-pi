@@ -56,6 +56,7 @@ import { isDeclaredForkHost, isUnsupportedHost } from "./host.js";
 import { isBiliProxyBaseUrl, PROXY_STAND_DOWN_MESSAGE, nativeStandDownMessage } from "./proxy-detect.js";
 import { findPiSubagentsInstalls, resolveAgentDir, DELEGATE_STAND_DOWN_MESSAGE } from "./setup-subagent-tools.js";
 import { registerPidianFeatureObservationProvider } from "./pidian-observation.js";
+import { registerPidianSessionCompressionProvider } from "./pidian-compression.js";
 
 // Host-facing API for multi-session hosts (docs/host-adapter.md, #367): the
 // extension keeps its own runtime instance private; hosts build their own via
@@ -128,8 +129,9 @@ export function createAcpExtension(adapter: AdapterConfig = {}): ExtensionFactor
     wireToolGuardrails(pi, runtime);
     wireOverflowSelfHeal(pi, runtime);
     wireThrottleRetry(pi, runtime);
+    const compressionProvider = registerPidianSessionCompressionProvider(pi, runtime);
     const toolSurface = readToolSurfaceWithPacks(process.cwd());
-    pi.registerTool(makeCompressTool(runtime, toolSurface.compress));
+    pi.registerTool(makeCompressTool(runtime, toolSurface.compress, compressionProvider));
     pi.registerTool(makeDecompressTool(runtime, toolSurface.decompress));
     pi.registerTool(makeSearchTool(runtime, toolSurface.search_context));
     pi.registerTool(makeStatusTool(runtime, toolSurface.acp_status));
